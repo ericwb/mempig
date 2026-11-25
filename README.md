@@ -16,14 +16,14 @@ A small process-management CLI. It shows how much memory you're using and which 
     3      ×1     1.1G   4.6%    0.0  ███▋··········  sublime_text 🐷
 ```
 
-It runs on macOS and Linux and needs only the Python 3.8+ standard library.
+It's a single native Rust binary for macOS and Linux.
 
 ## Install
 
 ```sh
-pipx install .          # or: pip install --user .
-# or just symlink the script:
-ln -s "$PWD/mempig.py" ~/.local/bin/mempig
+cargo install --path .        # puts mempig in ~/.cargo/bin
+# or build and copy it yourself:
+cargo build --release && cp target/release/mempig ~/.local/bin/
 ```
 
 ## Usage
@@ -34,11 +34,13 @@ ln -s "$PWD/mempig.py" ~/.local/bin/mempig
 | `mempig -n 25` | Show the top 25 |
 | `mempig -g` | Group by app, so all Chrome helpers count as one |
 | `mempig -u` | Show only your own processes |
-| `mempig -f node` | Show only processes whose name matches a regex |
+| `mempig -f node` | Show only processes whose name contains the text (case-insensitive) |
 | `mempig -w` / `-w 5` | Watch mode, refreshing every 2s (or every N seconds) |
 | `mempig kill 1234` | Kill by PID with SIGTERM (asks first) |
 | `mempig kill Slack -9 -y` | SIGKILL every Slack process without asking |
 
 Pig snouts mark heavy hitters: 🐷 at 2% or more of RAM, 🐷🐷 at 5% or more, 🐷🐷🐷 at 10% or more.
 
-"Used" memory uses the same formula as Activity Monitor on macOS (app + wired + compressed) and `MemTotal − MemAvailable` on Linux. Set `NO_COLOR` or pass `--no-color` to turn off colors.
+"Used" memory uses the same formula as Activity Monitor on macOS (app + wired + compressed) and `MemTotal − MemAvailable` on Linux. On macOS, ordinary users can't read the stats of other users' processes (for example WindowServer). mempig hides them, says how many it hid, and shows them when run with `sudo mempig`.
+
+Set `NO_COLOR` or pass `--no-color` to turn off colors.

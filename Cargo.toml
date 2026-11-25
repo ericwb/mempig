@@ -1,0 +1,16 @@
+[package]
+name = "mempig"
+version = "0.1.0"
+edition = "2024"
+description = "Show total and used memory, and the processes hogging it."
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+libc = "0.2"
+sysinfo = "0.33"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
