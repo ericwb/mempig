@@ -20,6 +20,16 @@ It's a single native Rust binary for macOS and Linux.
 
 ## Install
 
+Prebuilt binaries for Linux (x86_64, ARM64) and macOS (Intel, Apple Silicon) are attached to each [release](https://github.com/ericwb/mempig/releases):
+
+```sh
+tar -xzf mempig-*.tar.gz && cp mempig-*/mempig ~/.local/bin/
+```
+
+The macOS binaries aren't notarized. If Gatekeeper blocks one, run `xattr -d com.apple.quarantine mempig`.
+
+Or build from source:
+
 ```sh
 cargo install --path .        # puts mempig in ~/.cargo/bin
 # or build and copy it yourself:
