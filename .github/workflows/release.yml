@@ -3,8 +3,14 @@ name: Release
 on:
   release:
     types: [published]
-  # Manual runs build and package everything but don't upload: a dry run.
+  # Manual runs: with a tag, rebuild that tag and upload to its existing
+  # release; without one, build and package main as a dry run (no upload).
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to rebuild and upload to (e.g. v0.0.1). Leave empty for a dry run."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -29,9 +35,27 @@ jobs:
             os: macos-latest
     runs-on: ${{ matrix.os }}
     env:
-      TAG: ${{ github.event.release.tag_name || github.sha }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG || github.ref }}
+
+      - name: Set version from tag
+        if: env.TAG != ''
+        shell: bash
+        run: |
+          VER="${TAG#v}"
+          if ! [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$ ]]; then
+            echo "::error::Tag '$TAG' is not a semver version like v1.2.3"
+            exit 1
+          fi
+          export VER
+          # Only the first `version =` in Cargo.toml is the package's own.
+          perl -pi -e 'if (!$done && s/^version = ".*"/version = "$ENV{VER}"/) { $done = 1 }' Cargo.toml
+          perl -0pi -e 's/(name = "mempig"\nversion = )"[^"]*"/$1"$ENV{VER}"/' Cargo.lock
+          grep -m1 '^version' Cargo.toml
+          echo "VER=$VER" >> "$GITHUB_ENV"
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -46,13 +70,21 @@ jobs:
 
       - name: Smoke test
         # x86_64 macOS binaries run on Apple Silicon runners via Rosetta.
-        run: ./target/${{ matrix.target }}/release/mempig -n 3 -g
+        shell: bash
+        run: |
+          bin=./target/${{ matrix.target }}/release/mempig
+          $bin -n 3 -g
+          $bin --version
+          if [ -n "${VER:-}" ] && [ "$($bin --version)" != "mempig $VER" ]; then
+            echo "::error::Expected 'mempig $VER' from --version"
+            exit 1
+          fi
 
       - name: Package
         id: package
         shell: bash
         run: |
-          name="mempig-${TAG}-${{ matrix.target }}"
+          name="mempig-${TAG:-$(git rev-parse --short HEAD)}-${{ matrix.target }}"
           mkdir -p "dist/$name"
           cp "target/${{ matrix.target }}/release/mempig" README.md LICENSE "dist/$name/"
           tar -C dist -czf "dist/$name.tar.gz" "$name"
@@ -61,7 +93,7 @@ jobs:
           ls -l dist
 
       - name: Upload to release
-        if: github.event_name == 'release'
+        if: env.TAG != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$TAG" ${{ steps.package.outputs.files }} --clobber
