@@ -67,7 +67,7 @@ jobs:
         run: gh release upload "$TAG" ${{ steps.package.outputs.files }} --clobber
 
       - name: Keep as workflow artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: mempig-${{ matrix.target }}
           path: dist/*.tar.gz*
