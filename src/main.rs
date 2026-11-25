@@ -77,12 +77,24 @@ fn paint(code: &str, s: &str) -> String {
         s.to_string()
     }
 }
-fn bold(s: &str) -> String { paint("1", s) }
-fn dim(s: &str) -> String { paint("2", s) }
-fn red(s: &str) -> String { paint("31", s) }
-fn yellow(s: &str) -> String { paint("33", s) }
-fn green(s: &str) -> String { paint("32", s) }
-fn pink(s: &str) -> String { paint("95", s) }
+fn bold(s: &str) -> String {
+    paint("1", s)
+}
+fn dim(s: &str) -> String {
+    paint("2", s)
+}
+fn red(s: &str) -> String {
+    paint("31", s)
+}
+fn yellow(s: &str) -> String {
+    paint("33", s)
+}
+fn green(s: &str) -> String {
+    paint("32", s)
+}
+fn pink(s: &str) -> String {
+    paint("95", s)
+}
 
 fn heat(frac: f64, s: &str) -> String {
     if frac >= 0.85 {
@@ -131,7 +143,10 @@ fn term_width() -> usize {
             return ws.ws_col as usize;
         }
     }
-    std::env::var("COLUMNS").ok().and_then(|c| c.parse().ok()).unwrap_or(100)
+    std::env::var("COLUMNS")
+        .ok()
+        .and_then(|c| c.parse().ok())
+        .unwrap_or(100)
 }
 
 fn truncate(s: &str, width: usize) -> String {
@@ -230,6 +245,7 @@ struct Proc {
 /// Per-process CPU% sampler. sysinfo's per-process CPU reads 0 on recent macOS,
 /// so on macOS we diff task CPU time from proc_pidinfo ourselves.
 #[derive(Default)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 struct CpuSampler {
     last: HashMap<u32, u64>,
     at: Option<Instant>,
@@ -243,7 +259,11 @@ impl CpuSampler {
         let (numer, denom) = unsafe {
             let mut tb: libc::mach_timebase_info = std::mem::zeroed();
             libc::mach_timebase_info(&mut tb);
-            if tb.denom == 0 { (1, 1) } else { (tb.numer as u64, tb.denom as u64) }
+            if tb.denom == 0 {
+                (1, 1)
+            } else {
+                (tb.numer as u64, tb.denom as u64)
+            }
         };
         let now = Instant::now();
         let wall_ns = self.at.map(|t| now.duration_since(t).as_nanos() as f64);
@@ -266,11 +286,13 @@ impl CpuSampler {
                     continue;
                 }
                 // Task times are in mach absolute-time units.
-                (info.pti_total_user + info.pti_total_system) as u128 * numer as u128 / denom as u128
+                (info.pti_total_user + info.pti_total_system) as u128 * numer as u128
+                    / denom as u128
             } as u64;
             if let (Some(wall), Some(prev)) = (wall_ns, self.last.get(&pid)) {
                 if wall > 0.0 {
-                    self.usage.insert(pid, (ns.saturating_sub(*prev) as f64 / wall * 100.0) as f32);
+                    self.usage
+                        .insert(pid, (ns.saturating_sub(*prev) as f64 / wall * 100.0) as f32);
                 }
             }
             next.insert(pid, ns);
@@ -315,7 +337,10 @@ fn display_name(p: &sysinfo::Process) -> String {
         .and_then(|e| e.file_name())
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| p.name().to_string_lossy().into_owned());
-    let versiony = !exe.is_empty() && exe.chars().all(|c| c.is_ascii_digit() || c == '.' || c == '-');
+    let versiony = !exe.is_empty()
+        && exe
+            .chars()
+            .all(|c| c.is_ascii_digit() || c == '.' || c == '-');
     if versiony {
         if let Some(arg0) = p.cmd().first() {
             let arg0 = arg0.to_string_lossy();
@@ -341,7 +366,14 @@ fn processes(sys: &System, users: &Users, cpu: &CpuSampler) -> Vec<Proc> {
                 .and_then(|u| users.get_user_by_id(u))
                 .map(|u| u.name().to_string())
                 .unwrap_or_else(|| "?".into());
-            Proc { pid: p.pid().as_u32(), user, rss: p.memory(), cpu: cpu.get(p.pid().as_u32(), p.cpu_usage()), name, count: 1 }
+            Proc {
+                pid: p.pid().as_u32(),
+                user,
+                rss: p.memory(),
+                cpu: cpu.get(p.pid().as_u32(), p.cpu_usage()),
+                name,
+                count: 1,
+            }
         })
         .collect()
 }
@@ -381,7 +413,9 @@ fn group(procs: Vec<Proc>) -> Vec<Proc> {
 }
 
 fn current_user() -> String {
-    std::env::var("USER").or_else(|_| std::env::var("LOGNAME")).unwrap_or_default()
+    std::env::var("USER")
+        .or_else(|_| std::env::var("LOGNAME"))
+        .unwrap_or_default()
 }
 
 // ------------------------------------------------------------------ rendering
@@ -415,9 +449,17 @@ fn render(args: &ViewArgs, sys: &System, users: &Users, cpu: &CpuSampler) -> Str
             "  {hidden} system processes hidden (macOS restricts access); run with sudo to include them"
         ))
     });
-    let frac = if mem.total > 0 { mem.used as f64 / mem.total as f64 } else { 0.0 };
+    let frac = if mem.total > 0 {
+        mem.used as f64 / mem.total as f64
+    } else {
+        0.0
+    };
     let bw = cols.saturating_sub(40).clamp(10, 50);
-    out.push(format!("{} {}", bold(&format!("{PIG} mempig")), dim(&format!(" v{VERSION}"))));
+    out.push(format!(
+        "{} {}",
+        bold(&format!("{PIG} mempig")),
+        dim(&format!(" v{VERSION}"))
+    ));
     out.push(String::new());
     out.push(format!(
         "  Memory  {}  {} / {}  {}",
@@ -432,7 +474,11 @@ fn render(args: &ViewArgs, sys: &System, users: &Users, cpu: &CpuSampler) -> Str
         human(mem.cached)
     );
     if mem.swap_total > 0 {
-        detail += &format!("  ·  swap {} / {}", human(mem.swap_used), human(mem.swap_total));
+        detail += &format!(
+            "  ·  swap {} / {}",
+            human(mem.swap_used),
+            human(mem.swap_total)
+        );
     }
     out.push(dim(&detail));
     out.push(String::new());
@@ -467,9 +513,25 @@ fn render(args: &ViewArgs, sys: &System, users: &Users, cpu: &CpuSampler) -> Str
     )));
     let biggest = top[0].rss.max(1) as f64;
     for (i, p) in top.iter().enumerate() {
-        let pf = if mem.total > 0 { p.rss as f64 / mem.total as f64 } else { 0.0 };
-        let ident = if args.group { format!("×{}", p.count) } else { p.pid.to_string() };
-        let snouts = PIG.repeat(if pf >= 0.10 { 3 } else if pf >= 0.05 { 2 } else if pf >= 0.02 { 1 } else { 0 });
+        let pf = if mem.total > 0 {
+            p.rss as f64 / mem.total as f64
+        } else {
+            0.0
+        };
+        let ident = if args.group {
+            format!("×{}", p.count)
+        } else {
+            p.pid.to_string()
+        };
+        let snouts = PIG.repeat(if pf >= 0.10 {
+            3
+        } else if pf >= 0.05 {
+            2
+        } else if pf >= 0.02 {
+            1
+        } else {
+            0
+        });
         let line = format!(
             "  {:>3}  {ident:>6}  {}  {:>4.1}%  {:>5.1}  {}  {} {snouts}",
             i + 1,
@@ -501,7 +563,10 @@ fn kill(target: &str, force: bool, yes: bool) -> i32 {
         Err(_) => {
             let t = target.to_lowercase();
             all.into_iter()
-                .filter(|p| p.pid != me && (p.name.to_lowercase() == t || app_name(&p.name).to_lowercase() == t))
+                .filter(|p| {
+                    p.pid != me
+                        && (p.name.to_lowercase() == t || app_name(&p.name).to_lowercase() == t)
+                })
                 .collect()
         }
     };
@@ -511,7 +576,11 @@ fn kill(target: &str, force: bool, yes: bool) -> i32 {
     }
     victims.sort_by(|a, b| b.rss.cmp(&a.rss));
     let total: u64 = victims.iter().map(|p| p.rss).sum();
-    let (sig, signame) = if force { (libc::SIGKILL, "SIGKILL") } else { (libc::SIGTERM, "SIGTERM") };
+    let (sig, signame) = if force {
+        (libc::SIGKILL, "SIGKILL")
+    } else {
+        (libc::SIGTERM, "SIGTERM")
+    };
 
     println!(
         "{PIG} About to send {signame} to {} process(es) freeing up to {}:",
@@ -519,7 +588,13 @@ fn kill(target: &str, force: bool, yes: bool) -> i32 {
         bold(&human(total))
     );
     for p in victims.iter().take(15) {
-        println!("    {:>7}  {:>7}  {:<12} {}", p.pid, human(p.rss), p.user, p.name);
+        println!(
+            "    {:>7}  {:>7}  {:<12} {}",
+            p.pid,
+            human(p.rss),
+            p.user,
+            p.name
+        );
     }
     if victims.len() > 15 {
         println!("{}", dim(&format!("    … and {} more", victims.len() - 15)));
@@ -543,7 +618,13 @@ fn kill(target: &str, force: bool, yes: bool) -> i32 {
             let err = io::Error::last_os_error();
             if err.raw_os_error() == Some(libc::EPERM) {
                 failed += 1;
-                eprintln!("{}", red(&format!("  permission denied: {} {} (try sudo)", p.pid, p.name)));
+                eprintln!(
+                    "{}",
+                    red(&format!(
+                        "  permission denied: {} {} (try sudo)",
+                        p.pid, p.name
+                    ))
+                );
             }
         }
     }
@@ -591,5 +672,101 @@ fn main() {
                 refresh(&mut sys, &mut cpu);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    /// Tests that flip the global COLOR flag must not run concurrently.
+    static COLOR_LOCK: Mutex<()> = Mutex::new(());
+
+    fn proc(pid: u32, user: &str, rss: u64, cpu: f32, name: &str) -> Proc {
+        Proc {
+            pid,
+            user: user.into(),
+            rss,
+            cpu,
+            name: name.into(),
+            count: 1,
+        }
+    }
+
+    #[test]
+    fn human_sizes() {
+        assert_eq!(human(0), "0B");
+        assert_eq!(human(1023), "1023B");
+        assert_eq!(human(1024), "1K");
+        assert_eq!(human(1536 * 1024), "1.5M");
+        assert_eq!(human(24 * 1024 * 1024 * 1024), "24.0G");
+        assert_eq!(human(3 * 1024u64.pow(5)), "3072.0T");
+    }
+
+    #[test]
+    fn bar_has_fixed_width() {
+        let _guard = COLOR_LOCK.lock().unwrap();
+        COLOR.store(false, Ordering::Relaxed);
+        for frac in [0.0, 0.01, 0.33, 0.5, 0.999, 1.0, 1.5, -1.0] {
+            assert_eq!(bar(frac, 20).chars().count(), 20, "frac {frac}");
+        }
+        assert_eq!(bar(1.0, 4), "████");
+        assert_eq!(bar(0.0, 4), "····");
+        assert_eq!(bar(0.5, 4), "██··");
+    }
+
+    #[test]
+    fn truncate_names() {
+        assert_eq!(truncate("firefox", 10), "firefox");
+        assert_eq!(truncate("Google Chrome Helper", 10), "Google Ch…");
+        assert_eq!(truncate("Google Chrome Helper", 10).chars().count(), 10);
+    }
+
+    #[test]
+    fn app_name_folds_helpers() {
+        assert_eq!(app_name("Google Chrome Helper (Renderer)"), "Google Chrome");
+        assert_eq!(app_name("Google Chrome Helper"), "Google Chrome");
+        assert_eq!(app_name("Codex (Renderer)"), "Codex");
+        assert_eq!(app_name("firefox"), "firefox");
+        assert_eq!(app_name("node"), "node");
+    }
+
+    #[test]
+    fn group_sums_by_app() {
+        let groups = group(vec![
+            proc(1, "eric", 100, 1.0, "Google Chrome"),
+            proc(2, "eric", 50, 2.0, "Google Chrome Helper (Renderer)"),
+            proc(3, "root", 25, 0.5, "Google Chrome Helper (GPU)"),
+            proc(4, "eric", 10, 0.0, "firefox"),
+        ]);
+        let chrome = groups.iter().find(|g| g.name == "Google Chrome").unwrap();
+        assert_eq!(chrome.rss, 175);
+        assert_eq!(chrome.count, 3);
+        assert!((chrome.cpu - 3.5).abs() < 1e-6);
+        assert_eq!(chrome.user, "*");
+        let ff = groups.iter().find(|g| g.name == "firefox").unwrap();
+        assert_eq!((ff.rss, ff.count, ff.user.as_str()), (10, 1, "eric"));
+        assert_eq!(groups.len(), 2);
+    }
+
+    #[test]
+    fn heat_thresholds() {
+        let _guard = COLOR_LOCK.lock().unwrap();
+        COLOR.store(true, Ordering::Relaxed);
+        assert!(heat(0.1, "x").contains("[32m"));
+        assert!(heat(0.7, "x").contains("[33m"));
+        assert!(heat(0.9, "x").contains("[31m"));
+        COLOR.store(false, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn mem_info_is_sane() {
+        let mut sys = System::new();
+        sys.refresh_memory();
+        let m = mem_info(&sys);
+        assert!(m.total > 0);
+        assert!(m.used > 0 && m.used <= m.total);
+        assert!(m.swap_used <= m.swap_total || m.swap_total == 0);
     }
 }
