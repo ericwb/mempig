@@ -41,3 +41,12 @@ jobs:
         with:
           name: mempig-${{ runner.os }}-${{ runner.arch }}
           path: target/release/mempig
+
+  msrv:
+    name: msrv (1.85)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --locked

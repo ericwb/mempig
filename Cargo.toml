@@ -2,6 +2,7 @@
 name = "mempig"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 description = "Show total and used memory, and the processes hogging it."
 license = "GPL-3.0-only"
 repository = "https://github.com/ericwb/mempig"

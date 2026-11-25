@@ -574,7 +574,7 @@ fn kill(target: &str, force: bool, yes: bool) -> i32 {
         eprintln!("mempig: no process matching {target:?}");
         return 1;
     }
-    victims.sort_by(|a, b| b.rss.cmp(&a.rss));
+    victims.sort_by_key(|p| std::cmp::Reverse(p.rss));
     let total: u64 = victims.iter().map(|p| p.rss).sum();
     let (sig, signame) = if force {
         (libc::SIGKILL, "SIGKILL")
