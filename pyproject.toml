@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mempig"
+version = "0.1.0"
+description = "Show total and used memory, and the processes hogging it."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+[project.scripts]
+mempig = "mempig:main"
+
+[tool.setuptools]
+py-modules = ["mempig"]
